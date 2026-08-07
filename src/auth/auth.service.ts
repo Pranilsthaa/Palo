@@ -1,14 +1,16 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { UserService } from 'src/user/user.service';
-import { login, registerUser } from './auth.controller';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import * as bcrypt from "bcrypt";
+import { UserService } from "src/user/user.service";
+import { login, registerUser } from "./auth.controller";
+import { GoogleStrategy } from "./strategies/google.strategy";
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private readonly userService: UserService,
+    private googleStrategy: GoogleStrategy,
   ) {}
 
   async generateToken(userId: number, name: string) {
@@ -18,11 +20,11 @@ export class AuthService {
     };
     const access_token = this.jwtService.sign(payload, {
       secret: process.env.JWT_ACCESS_SECRET,
-      expiresIn: '15m',
+      expiresIn: "15m",
     });
     const refresh_token = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: '7d',
+      expiresIn: "7d",
     });
     return { access_token, refresh_token };
   }
@@ -59,10 +61,10 @@ export class AuthService {
     const { email, password } = data;
 
     const user = await this.userService.findUserByEmail(email);
-    if (!user) throw new UnauthorizedException('Invalid username or password');
+    if (!user) throw new UnauthorizedException("Invalid username or password");
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid)
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException("Invalid username or password");
     const { refresh_token, access_token } =
       await this.getTokensAndSaveRefreshToken(user.id, user.name);
     return {
@@ -79,10 +81,22 @@ export class AuthService {
     };
   }
 
+  async googleLogin(idToken: string) {
+    const googleUser = await this.googleStrategy.verifyToken(idToken);
+    const user = await this.userService.findOrCreateGoogleUser(googleUser);
+
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+    });
+
+    return { accessToken };
+  }
+
   async logout(userId: number) {
     await this.userService.updateRefreshToken(null, userId);
     return {
-      message: 'Logged out successfully',
+      message: "Logged out successfully",
     };
   }
 }
