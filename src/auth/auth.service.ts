@@ -29,10 +29,10 @@ export class AuthService {
     return { access_token, refresh_token };
   }
 
-  async getTokensAndSaveRefreshToken(userId: number, email: string) {
+  async getTokensAndSaveRefreshToken(userId: number, name: string) {
     const { access_token, refresh_token } = await this.generateToken(
       userId,
-      email,
+      name,
     );
 
     const salt = await bcrypt.genSalt();
@@ -84,19 +84,18 @@ export class AuthService {
   async googleLogin(idToken: string) {
     const googleUser = await this.googleStrategy.verifyToken(idToken);
     const user = await this.userService.findOrCreateGoogleUser(googleUser);
+    const { refresh_token, access_token } =
+      await this.getTokensAndSaveRefreshToken(user.id, user.name);
 
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
-      email: user.email,
-    });
-
-    return { accessToken };
+    return { user, tokens: { refresh_token, access_token } };
   }
 
   async logout(userId: number) {
-    await this.userService.updateRefreshToken(null, userId);
-    return {
-      message: "Logged out successfully",
-    };
+    // await this.userService.updateRefreshToken(null, userId);
+    // return {
+    //   message: "Logged out successfully",
+    // };
+    console.log("first");
+    return "test";
   }
 }

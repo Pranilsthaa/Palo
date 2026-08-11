@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -55,22 +56,34 @@ export class UserService {
       .where(eq(schema.users.id, userId));
   }
 
-  async findOrCreateGoogleUser(googleUser: { email: string; name: string }) {
+  async findOrCreateGoogleUser(googleUser: {
+    email: string | undefined;
+    name: string | undefined;
+  }) {
+    if (!googleUser.email || !googleUser.name) {
+      throw new UnauthorizedException(
+        "Email and name are required for google user",
+      );
+    }
     // check if email exists (manual signup)
     const user = await this.db
       .select()
       .from(schema.users)
       .where(eq(schema.users.email, googleUser.email));
-    if (user) {
+    if (user.length !== 0) {
       return user[0];
     }
 
     // create new
-    return this.db.insert(schema.users).values({
-      email: googleUser.email,
-      name: googleUser.name,
-      contact: "",
-      password: "",
-    });
+    const result = await this.db
+      .insert(schema.users)
+      .values({
+        email: googleUser.email,
+        name: googleUser.name,
+        contact: "",
+        password: "",
+      })
+      .returning({ id: schema.users.id, name: schema.users.name });
+    return result[0];
   }
 }

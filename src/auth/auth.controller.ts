@@ -78,8 +78,11 @@ export class AuthController {
   }
 
   @Post("logout")
+  @Public()
   @HttpCode(200)
   logout(@User() user: AuthRequest["user"]) {
+    console.log("first");
+    return "hello";
     return this.authservice.logout(user.userId);
   }
 }

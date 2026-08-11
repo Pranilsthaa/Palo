@@ -9,7 +9,12 @@ import { jwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), AuthModule, DatabaseModule, UserModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    AuthModule,
+    DatabaseModule,
+    UserModule,
+  ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: jwtAuthGuard }, AppService],
 })
